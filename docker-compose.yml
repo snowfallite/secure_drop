@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: secure_drop_password
       POSTGRES_DB: secure_drop_db
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5433:5432" # Changed to 5433 to avoid conflict with host Postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -17,14 +17,14 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   backend:
     build: 
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       # Production: set these in .env file
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://secure_drop_user:secure_drop_password@db:5432/secure_drop_db}
@@ -32,7 +32,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change_me_in_production_simulated_secret}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      ALLOW_ORIGINS: ${ALLOW_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost,http://localhost:80}
+      ALLOW_ORIGINS: ${ALLOW_ORIGINS:-https://chat.vega-connect.icu,http://localhost:3000}
     depends_on:
       - db
       - redis
@@ -44,7 +44,7 @@ services:
       context: .
       dockerfile: front/Dockerfile
     ports:
-      - "80:80"
+      - "127.0.0.1:3000:80" # Exposed on localhost:3000 for Caddy to proxy to
     depends_on:
       - backend
 
