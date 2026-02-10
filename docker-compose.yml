@@ -49,9 +49,6 @@ services:
       dockerfile: front/Dockerfile
     environment:
       TZ: Europe/Moscow
-    build:
-      context: .
-      dockerfile: front/Dockerfile
     ports:
       - "127.0.0.1:3000:80" # Exposed on localhost:3000 for Caddy to proxy to
     depends_on:

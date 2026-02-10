@@ -8,7 +8,7 @@ from ..schemas import ChatCreate, ChatResponse, MessageCreate, MessageResponse, 
 from ..deps import get_current_user
 from typing import List
 from sqlalchemy import delete as sa_delete
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import Redis
 from ..redis_client import redis_client
@@ -90,71 +90,46 @@ async def get_chats(
 
     chat_ids = [c.id for c in chats]
 
-    # 2. Fetch Last Message for each chat efficiently
-    # We use a window function to rank messages by date desc per chat
-    from sqlalchemy import func, desc, literal_column
+    # 3. Fetch Last Message for each chat efficiently
+    # Use a robust subquery approach compatible with most SQL dialects, though we are on Postgres.
+    # We find the latest created_at for each chat, then join to get the message details.
+    
+    from sqlalchemy import func, tuple_
 
-    # Partition by chat_id, order by created_at desc
-    # This subquery assigns a row_number to each message in these chats
-    subquery = (
-        select(
-            Message,
-            func.row_number().over(
-                partition_by=Message.chat_id,
-                order_by=desc(Message.created_at)
-            ).label("rn")
-        )
+    # Subquery to find the max created_at for each chat
+    latest_times_subquery = (
+        select(Message.chat_id, func.max(Message.created_at).label("max_created_at"))
         .where(Message.chat_id.in_(chat_ids))
+        .group_by(Message.chat_id)
         .subquery()
     )
 
-    # Now select only those with rn=1
-    # We alias the subquery so we can access columns
-    # Note: effectively accessing the columns from the subquery requires care.
-    # A simpler approach without window functions (if generic) is:
-    # SELECT * FROM messages WHERE (chat_id, created_at) IN (SELECT chat_id, MAX(created_at) FROM messages GROUP BY chat_id)
-    # But created_at might not be unique.
-    
-    # Let's use the explicit window function approach which is robust on Postgres.
-    # To map it back to ORM objects, we allow the subquery to return columns matching the Model.
-    # However, SQLAlchemy ORM loading from arbitrary subquery is tricky.
-    
-    # Alternative Simpler Approach: 
-    # Just fetch the latest message ID per chat and then fetch those objects.
-    
-    latest_msg_ids_stmt = (
-        select(
-            Message.chat_id,
-            func.max(Message.created_at)
-        )
-        .where(Message.chat_id.in_(chat_ids))
-        .group_by(Message.chat_id)
-    )
-    # This gives us (chat_id, max_time).
-    # To get the actual message content, we need the row matching this.
-    
-    # Let's try the Window Function approach properly aliased
-    # But for simplicity and speed in AsyncSession:
-    # We will fetch ALL last messages for these chats in one go.
-    
-    # Subquery to get latest ID per chat
-    # We assume ID is roughly monotonic or we trust created_at. 
-    # Let's rely on created_at sorting.
-    
-    # Using distinct ON (chat_id) is Postgres specific and very fast.
+    # Main query to fetch full message details
+    # We join on chat_id and created_at. 
+    # Note: If two messages have the exact same timestamp in the same chat, this might return duplicates.
+    # Given the precision of timestamps, this is rare, but we can handle it by taking the first one in python or using DISTINCT.
     try:
         stmt = (
             select(Message)
-            .where(Message.chat_id.in_(chat_ids))
-            .distinct(Message.chat_id)
-            .order_by(Message.chat_id, desc(Message.created_at))
+            .join(
+                latest_times_subquery,
+                (Message.chat_id == latest_times_subquery.c.chat_id) & 
+                (Message.created_at == latest_times_subquery.c.max_created_at)
+            )
         )
         
         last_msgs_result = await db.execute(stmt)
         last_msgs = last_msgs_result.scalars().all()
-        last_msg_map = {m.chat_id: m for m in last_msgs}
+        
+        # Deduplicate in Python just in case multiple messages have exact same timestamp
+        last_msg_map = {}
+        for m in last_msgs:
+            # If we already have a message for this chat, only overwrite if this one somehow has a greater ID (arbitrary tie-break)
+            if m.chat_id not in last_msg_map or m.id > last_msg_map[m.chat_id].id:
+                last_msg_map[m.chat_id] = m
+                
     except Exception as e:
-        print(f"Optimization query failed: {e}. Falling back to empty last messages.")
+        print(f"Error fetching last messages: {e}")
         last_msg_map = {}
 
     # 3. Collect all participant IDs for Redis
@@ -317,7 +292,7 @@ async def get_messages(
     unread_msgs = (await db.execute(stmt)).scalars().all()
     
     if unread_msgs:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         for msg in unread_msgs:
             msg.read_at = now
         await db.commit()

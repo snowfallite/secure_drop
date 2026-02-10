@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 import enum
 import uuid
 from datetime import datetime
+from sqlalchemy.sql import func
 from .database import Base
 
 class MessageType(enum.Enum):
@@ -20,7 +21,7 @@ class User(Base):
     public_key = Column(String, nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     avatar_url = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime(timezone=True), default=func.now())
 
     chats = relationship("ChatParticipant", back_populates="user")
     sent_messages = relationship("Message", back_populates="sender")
@@ -29,7 +30,7 @@ class Chat(Base):
     __tablename__ = "chats"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime(timezone=True), default=func.now())
 
     participants = relationship("ChatParticipant", back_populates="chat")
     messages = relationship("Message", back_populates="chat")
@@ -51,8 +52,8 @@ class Message(Base):
     sender_id = Column(String, ForeignKey("users.id"), nullable=False)
     content = Column(Text, nullable=False) # Encrypted content
     type = Column(Enum(MessageType), default=MessageType.TEXT)
-    created_at = Column(DateTime, default=datetime.now)
-    read_at = Column(DateTime, nullable=True) # Read receipt
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    read_at = Column(DateTime(timezone=True), nullable=True) # Read receipt
     reply_to_id = Column(String, ForeignKey("messages.id"), nullable=True)
 
     chat = relationship("Chat", back_populates="messages")

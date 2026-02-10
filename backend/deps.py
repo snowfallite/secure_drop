@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .database import get_db
 from .models import User
 from sqlalchemy.future import select
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import Redis client
 from .redis_client import redis_client
@@ -55,7 +55,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     # Key: user:last_seen:{user_id} -> timestamp ISO string
     # Key: user:online:{user_id} -> "1" (expires in 5 mins)
     try:
-        now_iso = datetime.now().isoformat()
+        now_iso = datetime.now(timezone.utc).isoformat()
         pipe = redis_client.pipeline()
         pipe.set(f"user:last_seen:{user.id}", now_iso)
         pipe.set(f"user:online:{user.id}", "1", ex=45) # 45 seconds online window
