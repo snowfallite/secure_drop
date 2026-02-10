@@ -2,7 +2,6 @@
 
 Secure Drop is a secure, E2E encrypted messaging application designed for privacy and anonymity. It features a modern, glassmorphism-inspired UI and works as a Progressive Web App (PWA).
 
-![Secure Drop](https://via.placeholder.com/800x400?text=Secure+Drop+Screenshot)
 
 ## Key Features
 
