@@ -1,0 +1,8 @@
+{
+  "name": "Secure Drop",
+  "description": "A minimalist, secure messenger featuring TOTP authentication and a Liquid Glass iOS-style interface. Exchange text, photos, and emojis in a privacy-focused environment.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

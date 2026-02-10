@@ -1,0 +1,20 @@
+[project]
+name = "secure-drop-messenger"
+version = "0.1.0"
+description = "Secure Drop Messenger"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "fastapi>=0.128.6",
+    "passlib[bcrypt]>=1.7.4",
+    "pillow>=12.1.0",
+    "pydantic>=2.12.5",
+    "pyotp>=2.9.0",
+    "python-jose>=3.5.0",
+    "python-multipart>=0.0.22",
+    "qrcode>=8.2",
+    "redis>=5.0.1",
+    "sqlalchemy>=2.0.46",
+    "uvicorn>=0.40.0",
+]
