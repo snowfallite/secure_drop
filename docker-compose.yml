@@ -8,6 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-secure_drop_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_drop_password}
       POSTGRES_DB: ${POSTGRES_DB:-secure_drop_db}
+      TZ: Europe/Moscow
     ports:
       - "127.0.0.1:5433:5432" # Changed to 5433 to avoid conflict with host Postgres
     volumes:
@@ -16,6 +17,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
+    environment:
+      TZ: Europe/Moscow
     ports:
       - "127.0.0.1:6379:6379"
 
@@ -33,6 +36,7 @@ services:
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       ALLOW_ORIGINS: ${ALLOW_ORIGINS:-https://chat.vega-connect.icu,http://localhost:3000}
+      TZ: Europe/Moscow
     depends_on:
       - db
       - redis
@@ -40,6 +44,11 @@ services:
       - ./backend:/app/backend
 
   frontend:
+    build:
+      context: .
+      dockerfile: front/Dockerfile
+    environment:
+      TZ: Europe/Moscow
     build:
       context: .
       dockerfile: front/Dockerfile

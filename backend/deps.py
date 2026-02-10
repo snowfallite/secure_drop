@@ -19,6 +19,9 @@ if not SECRET_KEY or SECRET_KEY == "CHANGE_THIS_IN_PRODUCTION":
     if os.getenv("ENVIRONMENT") == "production":
         raise ValueError("SECRET_KEY must be set in production environment")
     SECRET_KEY = SECRET_KEY or "dev_secret_key"
+    
+print(f"DEBUG: SECRET_KEY loaded: {SECRET_KEY[:4]}... (keep secret)")
+
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -52,7 +55,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     # Key: user:last_seen:{user_id} -> timestamp ISO string
     # Key: user:online:{user_id} -> "1" (expires in 5 mins)
     try:
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = datetime.now().isoformat()
         pipe = redis_client.pipeline()
         pipe.set(f"user:last_seen:{user.id}", now_iso)
         pipe.set(f"user:online:{user.id}", "1", ex=45) # 45 seconds online window

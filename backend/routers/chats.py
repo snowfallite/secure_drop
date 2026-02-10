@@ -142,17 +142,20 @@ async def get_chats(
     # Let's rely on created_at sorting.
     
     # Using distinct ON (chat_id) is Postgres specific and very fast.
-    stmt = (
-        select(Message)
-        .where(Message.chat_id.in_(chat_ids))
-        .distinct(Message.chat_id)
-        .order_by(Message.chat_id, desc(Message.created_at))
-    )
-    
-    last_msgs_result = await db.execute(stmt)
-    last_msgs = last_msgs_result.scalars().all()
-    
-    last_msg_map = {m.chat_id: m for m in last_msgs}
+    try:
+        stmt = (
+            select(Message)
+            .where(Message.chat_id.in_(chat_ids))
+            .distinct(Message.chat_id)
+            .order_by(Message.chat_id, desc(Message.created_at))
+        )
+        
+        last_msgs_result = await db.execute(stmt)
+        last_msgs = last_msgs_result.scalars().all()
+        last_msg_map = {m.chat_id: m for m in last_msgs}
+    except Exception as e:
+        print(f"Optimization query failed: {e}. Falling back to empty last messages.")
+        last_msg_map = {}
 
     # 3. Collect all participant IDs for Redis
     all_users = []
@@ -314,7 +317,7 @@ async def get_messages(
     unread_msgs = (await db.execute(stmt)).scalars().all()
     
     if unread_msgs:
-        now = datetime.utcnow()
+        now = datetime.now()
         for msg in unread_msgs:
             msg.read_at = now
         await db.commit()
