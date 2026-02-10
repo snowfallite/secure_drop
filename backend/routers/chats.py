@@ -79,27 +79,95 @@ async def get_chats(
         .join(ChatParticipant)
         .where(ChatParticipant.user_id == current_user.id)
         .options(
-            selectinload(Chat.participants).selectinload(ChatParticipant.user),
-            selectinload(Chat.messages)
+            selectinload(Chat.participants).selectinload(ChatParticipant.user)
+            # REMOVED: selectinload(Chat.messages) - this was the bottleneck
         )
     )
     chats = result.scalars().unique().all()
+    
+    if not chats:
+        return []
 
-    # 2. Collect all participant IDs to fetch status from Redis in batch
+    chat_ids = [c.id for c in chats]
+
+    # 2. Fetch Last Message for each chat efficiently
+    # We use a window function to rank messages by date desc per chat
+    from sqlalchemy import func, desc, literal_column
+
+    # Partition by chat_id, order by created_at desc
+    # This subquery assigns a row_number to each message in these chats
+    subquery = (
+        select(
+            Message,
+            func.row_number().over(
+                partition_by=Message.chat_id,
+                order_by=desc(Message.created_at)
+            ).label("rn")
+        )
+        .where(Message.chat_id.in_(chat_ids))
+        .subquery()
+    )
+
+    # Now select only those with rn=1
+    # We alias the subquery so we can access columns
+    # Note: effectively accessing the columns from the subquery requires care.
+    # A simpler approach without window functions (if generic) is:
+    # SELECT * FROM messages WHERE (chat_id, created_at) IN (SELECT chat_id, MAX(created_at) FROM messages GROUP BY chat_id)
+    # But created_at might not be unique.
+    
+    # Let's use the explicit window function approach which is robust on Postgres.
+    # To map it back to ORM objects, we allow the subquery to return columns matching the Model.
+    # However, SQLAlchemy ORM loading from arbitrary subquery is tricky.
+    
+    # Alternative Simpler Approach: 
+    # Just fetch the latest message ID per chat and then fetch those objects.
+    
+    latest_msg_ids_stmt = (
+        select(
+            Message.chat_id,
+            func.max(Message.created_at)
+        )
+        .where(Message.chat_id.in_(chat_ids))
+        .group_by(Message.chat_id)
+    )
+    # This gives us (chat_id, max_time).
+    # To get the actual message content, we need the row matching this.
+    
+    # Let's try the Window Function approach properly aliased
+    # But for simplicity and speed in AsyncSession:
+    # We will fetch ALL last messages for these chats in one go.
+    
+    # Subquery to get latest ID per chat
+    # We assume ID is roughly monotonic or we trust created_at. 
+    # Let's rely on created_at sorting.
+    
+    # Using distinct ON (chat_id) is Postgres specific and very fast.
+    stmt = (
+        select(Message)
+        .where(Message.chat_id.in_(chat_ids))
+        .distinct(Message.chat_id)
+        .order_by(Message.chat_id, desc(Message.created_at))
+    )
+    
+    last_msgs_result = await db.execute(stmt)
+    last_msgs = last_msgs_result.scalars().all()
+    
+    last_msg_map = {m.chat_id: m for m in last_msgs}
+
+    # 3. Collect all participant IDs for Redis
     all_users = []
     for chat in chats:
         for p in chat.participants:
             all_users.append(p.user)
     
-    # Deduplicate
     unique_users = {u.id: u for u in all_users}
     user_ids = list(unique_users.keys())
 
-    # 3. Batch fetch Redis Status
+    # 4. Batch fetch Redis Status
     presence_map = {}
     last_seen_map = {}
     
-    if user_ids:
+    if user_ids and redis_client:
         try:
             pipe = redis_client.pipeline()
             for uid in user_ids:
@@ -107,7 +175,6 @@ async def get_chats(
                 pipe.get(f"user:last_seen:{uid}")
             results = await pipe.execute()
             
-            # results = [online1, last_seen1, online2, last_seen2, ...]
             for i, uid in enumerate(user_ids):
                 is_online = results[i*2]
                 last_seen_str = results[i*2 + 1]
@@ -123,29 +190,23 @@ async def get_chats(
         except Exception as e:
             print(f"Redis fetch error: {e}")
 
-    # 4. Construct Response
+    # 5. Construct Response
     response = []
     for chat in chats:
-        # Build enriched participants list
         participants_resp = []
         for p in chat.participants:
             u_obj = p.user
-            # Convert SQLAlchemy model to Pydantic-compatible dict/object
-            # We can use UserResponse.from_orm(u_obj) and then update
             u_resp = UserResponse.model_validate(u_obj)
             u_resp.is_online = presence_map.get(u_obj.id, False)
             u_resp.last_seen = last_seen_map.get(u_obj.id, None)
             participants_resp.append(u_resp)
 
-        last_msg = None
-        if chat.messages:
-            sorted_msgs = sorted(chat.messages, key=lambda m: m.created_at)
-            last_msg = sorted_msgs[-1]
+        last_msg = last_msg_map.get(chat.id)
             
         response.append({
             "id": chat.id,
             "created_at": chat.created_at,
-            "participants": participants_resp, # Use enriched list
+            "participants": participants_resp,
             "last_message": {
                 "id": last_msg.id,
                 "content": last_msg.content if last_msg.type != MessageType.IMAGE else "📷 Фото",

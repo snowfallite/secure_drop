@@ -101,17 +101,62 @@ const App: React.FC = () => {
     }
   };
 
+  // Track last message IDs to detect new messages for notifications
+  const lastMessageIds = useRef<Record<string, string>>({});
+
   // Poll chat list for updates and notifications
   useEffect(() => {
     if (!currentUser) return;
-    const interval = setInterval(async () => {
-      if (document.visibilityState === 'visible' && view === 'room') return; // let ChatRoom poll if active? actually ChatRoom polls messages, but App polls list for others.
-      // We should poll list regardless to show unread or new chats, but maybe less frequent if active?
-      // Let's just poll.
+
+    const poll = async () => {
+      // Always poll to update list (unread status, new messages)
       await loadChats();
-    }, 4000);
+    };
+
+    const interval = setInterval(poll, 4000);
     return () => clearInterval(interval);
-  }, [currentUser, loadChats, view]);
+  }, [currentUser, loadChats]);
+
+  // Effect to assert notifications when chats update
+  useEffect(() => {
+    if (!currentUser) return;
+
+    chats.forEach(chat => {
+      if (!chat.last_message) return;
+
+      const lastId = lastMessageIds.current[chat.id];
+      const newMsg = chat.last_message;
+
+      // If we have a new message (different ID)
+      if (lastId && lastId !== newMsg.id) {
+        // And it's not from me
+        if (newMsg.sender_id !== currentUser.id) {
+          // Identify sender name
+          const sender = chat.participants.find(p => p.id === newMsg.sender_id)?.username || 'Кто-то';
+          const content = newMsg.type === MessageType.IMAGE ? '📷 Фото' : newMsg.content;
+
+          // Show notification if permitted
+          if (Notification.permission === 'granted') {
+            // Use SW registration if available for better mobile support
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(`Сообщение от ${sender}`, {
+                  body: content,
+                  icon: '/icon.svg',
+                  tag: `msg-${newMsg.id}` // Prevent duplicate notifications
+                });
+              });
+            } else {
+              new Notification(`Сообщение от ${sender}`, { body: content, icon: '/icon.svg' });
+            }
+          }
+        }
+      }
+
+      // Update ref
+      lastMessageIds.current[chat.id] = newMsg.id;
+    });
+  }, [chats, currentUser]);
 
   // Notification logic could be here (comparing prev chats), but for simplicity:
   // We rely on service worker for background, or we could add simple comparison here.
