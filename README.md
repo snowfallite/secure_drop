@@ -1,48 +1,49 @@
 # Secure Drop Messenger
 
-Secure Drop is a secure, E2E encrypted messaging application designed for privacy and anonymity. It features a modern, glassmorphism-inspired UI and works as a Progressive Web App (PWA).
+Secure Drop — это безопасное приложение для обмена сообщениями с end-to-end шифрованием, разработанное для обеспечения приватности и анонимности. Оно имеет современный интерфейс в стиле glassmorphism и работает как прогрессивное веб-приложение (PWA).
 
+## Ключевые особенности
 
-## Key Features
+* **Сквозное шифрование**: Сообщения шифруются на стороне клиента с использованием надежных криптографических стандартов. Сервер никогда не видит открытый текст.
+* **Анонимность**: Не требуется номер телефона или электронная почта. Только имя пользователя и пароль.
+* **В реальном времени**: Мгновенная доставка сообщений, уведомления о прочтении и обновление статуса "онлайн".
+* **Поддержка PWA**: Устанавливается на мобильные и десктопные устройства.
+* **Современный UI**: Элегантный тёмный интерфейс с эффектами glassmorphism.
+* **Безопасная передача медиа**: Беспрепятственный обмен изображениями.
 
--   **End-to-End Encryption**: Messages are encrypted on the client side using robust cryptographic standards. The server never sees the plain text.
--   **Anonymous**: No phone number or email required. Just a username and password.
--   **Real-time**: Instant message delivery, read receipts, and online status updates.
--   **PWA Support**: Installable on mobile and desktop devices.
--   **Modern UI**: Sleek, dark-themed interface with glassmorphism effects.
--   **Secure Media**: Share images seamlessly.
+## Технологический стек
 
-## Tech Stack
+* **Frontend**: React, TypeScript, Vite, Tailwind CSS
+* **Backend**: Python, FastAPI, SQLAlchemy
+* **База данных**: PostgreSQL
+* **Real-time/Кэш**: Redis
+* **Контейнеризация**: Docker & Docker Compose
 
--   **Frontend**: React, TypeScript, Vite, Tailwind CSS
--   **Backend**: Python, FastAPI, SQLAlchemy
--   **Database**: PostgreSQL
--   **Real-time/Cache**: Redis
--   **Containerization**: Docker & Docker Compose
+## Быстрый старт (локальная разработка)
 
-## Quick Start (Local Development)
+1. Клонируйте репозиторий:
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/yourusername/secure_drop.git
-    cd secure_drop
-    ```
+```bash
+git clone https://github.com/yourusername/secure_drop.git
+cd secure_drop
+```
 
-2.  **Start with Docker Compose**:
-    ```bash
-    docker compose up --build
-    ```
+2. Запустите с помощью Docker Compose:
 
-3.  **Access the application**:
-    -   Frontend: [http://localhost:3000](http://localhost:3000) (or port 80 depending on config)
-    -   Backend API: [http://localhost:8000/docs](http://localhost:8000/docs)
+```bash
+docker compose up --build
+```
 
-## Project Structure
+3. Откройте приложение:
+   * Frontend: http://localhost:3000 (или порт 80 в зависимости от конфигурации)
+   * Backend API: http://localhost:8000/docs
 
--   `/backend`: FastAPI application, models, and API routers.
--   `/front`: React frontend application.
--   `/docker-compose.yml`: Orchestration for DB, Redis, Backend, and Frontend.
+## Структура проекта
 
-## License
+* `/backend`: FastAPI приложение, модели и API-роутеры.
+* `/front`: React frontend приложение.
+* `/docker-compose.yml`: Оркестрация для БД, Redis, Backend и Frontend.
+
+## Лицензия
 
 MIT
