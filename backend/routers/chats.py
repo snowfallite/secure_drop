@@ -15,7 +15,7 @@ from ..redis_client import redis_client
 
 router = APIRouter()
 
-@router.post("/", response_model=ChatResponse)
+@router.post("", response_model=ChatResponse)
 async def create_chat(
     chat_data: ChatCreate,
     db: AsyncSession = Depends(get_db),
@@ -68,7 +68,7 @@ async def create_chat(
     return ChatResponse(id=chat.id, created_at=chat.created_at, participants=[p.user for p in chat.participants])
 
 
-@router.get("/", response_model=List[ChatResponse])
+@router.get("", response_model=List[ChatResponse])
 async def get_chats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)

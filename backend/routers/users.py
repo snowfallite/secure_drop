@@ -36,7 +36,7 @@ async def update_me(
     await db.refresh(current_user)
     return current_user
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("", response_model=List[UserResponse])
 async def search_users(
     username: str,
     db: AsyncSession = Depends(get_db),

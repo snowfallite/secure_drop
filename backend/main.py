@@ -25,6 +25,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Secure Drop Messenger", lifespan=lifespan)
 
+# Trust forwarded headers from Caddy (X-Forwarded-Proto, X-Forwarded-For)
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("ALLOW_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost,http://localhost:80").split(","),
