@@ -5,9 +5,9 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: secure_drop_user
-      POSTGRES_PASSWORD: secure_drop_password
-      POSTGRES_DB: secure_drop_db
+      POSTGRES_USER: ${POSTGRES_USER:-secure_drop_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_drop_password}
+      POSTGRES_DB: ${POSTGRES_DB:-secure_drop_db}
     ports:
       - "127.0.0.1:5433:5432" # Changed to 5433 to avoid conflict with host Postgres
     volumes:
