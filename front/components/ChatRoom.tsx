@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Image as ImageIcon, Smile, Lock as LockIcon, Trash2, Reply as ReplyIcon, X, Check, CheckCheck } from 'lucide-react';
+import { ArrowLeft, Send, Image as ImageIcon, Smile, Lock as LockIcon, Trash2, Reply as ReplyIcon, X, Check, CheckCheck, AlertTriangle } from 'lucide-react';
 import { ChatSession, Message, MessageType, User } from '../types';
 import { Avatar } from './LiquidUI';
 import { ApiService } from '../services/api';
@@ -256,6 +256,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
       onTouchEnd={onTouchEnd}
     >
       {/* ===== HEADER ===== */}
+      {/* ===== HEADER ===== */}
       <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-glass-border bg-glass-background/80 backdrop-blur-md">
         <button
           onClick={onBack}
@@ -264,18 +265,35 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
           <ArrowLeft size={22} />
         </button>
         {otherUser && <Avatar name={otherUser.username} src={otherUser.avatar_url} size="sm" />}
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-base text-glass-text truncate">
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="font-semibold text-base text-glass-text truncate leading-tight">
             {otherUser?.username || 'Чат'}
           </div>
-          <div className="text-[10px] flex items-center gap-1 text-glass-muted">
-            {otherUser?.is_online ? (
-              <span className="text-accent-success">On-line</span>
-            ) : (
-              <span>{otherUser?.last_seen ? `Был(а) ${fmtTime(otherUser.last_seen)}` : 'Off-line'}</span>
-            )}
-            <span className="w-1 h-1 rounded-full bg-glass-muted mx-1" />
-            <LockIcon size={10} /> E2E
+          <div className="flex items-center gap-2 mt-0.5">
+            <div className="text-[10px] flex items-center gap-1 text-glass-muted">
+              {otherUser?.is_online ? (
+                <span className="text-accent-success font-medium">On-line</span>
+              ) : (
+                <span>{otherUser?.last_seen ? `Был(а) ${fmtTime(otherUser.last_seen)}` : 'Off-line'}</span>
+              )}
+            </div>
+
+            <div className={`text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded-full border ${sessionKey && !keyError
+              ? 'text-accent-success border-accent-success/20 bg-accent-success/5'
+              : 'text-accent-danger border-accent-danger/20 bg-accent-danger/5 animate-pulse'
+              }`}>
+              {sessionKey && !keyError ? (
+                <>
+                  <LockIcon size={10} />
+                  <span className="font-medium">E2E Защищено</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle size={10} />
+                  <span className="font-bold">{keyError || 'Без шифрования'}</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <button
@@ -304,14 +322,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
                   {/* Reply Preview */}
                   {msg.reply_to && (
                     <div
-                      className="bg-glass-highlight border-l-2 border-accent-success px-2 py-1 rounded text-xs text-glass-muted mb-1 cursor-pointer hover:opacity-80 transition-opacity"
+                      className="bg-glass-highlight border-l-2 border-accent-success px-2 py-1 rounded text-xs text-glass-muted mb-1 cursor-pointer hover:opacity-80 transition-opacity max-w-full"
                       onClick={() => {
                         const el = document.getElementById(`msg-${msg.reply_to?.id}`);
                         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }}
                     >
                       <div className="font-semibold text-accent-primary text-[10px]">{msg.reply_to.sender_id === currentUser.id ? 'Вы' : 'Собеседник'}</div>
-                      <div className="truncate">{msg.reply_to.type === MessageType.IMAGE ? '📷 Фото' : msg.reply_to.content}</div>
+                      <div className="truncate w-full pr-2">{msg.reply_to.type === MessageType.IMAGE ? '📷 Фото' : msg.reply_to.content}</div>
                     </div>
                   )}
 
@@ -373,7 +391,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
           </div>
         )}
 
-        <div className="flex items-center gap-1 bg-glass-surface border border-glass-border rounded-full p-1 pl-2">
+        <div className="flex items-end gap-1 bg-glass-surface border border-glass-border rounded-2xl p-1 pl-2 transition-all">
           <input type="file" accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={handleImageUpload} />
 
           <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full text-glass-muted hover:text-glass-text hover:bg-glass-highlight transition-all flex-shrink-0">
@@ -396,18 +414,24 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
             )}
           </div>
 
-          <input
-            className="flex-1 min-w-0 bg-transparent border-none outline-none text-glass-text py-2.5 px-2 text-sm placeholder:text-glass-muted/50"
+          <textarea
+            rows={1}
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-glass-text py-2.5 px-2 text-sm placeholder:text-glass-muted/50 resize-none overflow-hidden max-h-32"
             placeholder="Сообщение..."
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => {
+              setInputText(e.target.value);
+              // Auto-resize
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
             onKeyDown={handleKeyDown}
           />
 
           <button
             onClick={handleSend}
             disabled={!inputText.trim() || sending}
-            className={`p-2.5 rounded-full flex-shrink-0 transition-all ${!inputText.trim() || sending ? 'bg-glass-highlight text-glass-muted cursor-default' : 'bg-accent-primary text-white active:scale-95 shadow-lg'}`}
+            className={`p-2.5 rounded-full flex-shrink-0 transition-all self-end ${!inputText.trim() || sending ? 'bg-glass-highlight text-glass-muted cursor-default' : 'bg-accent-primary text-white active:scale-95 shadow-lg'}`}
           >
             <Send size={18} />
           </button>

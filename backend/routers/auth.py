@@ -34,6 +34,7 @@ async def check_username(username: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/register")
 async def register(user: UserRegisterStart, db: AsyncSession = Depends(get_db)):
+    user.username = user.username.strip()
     result = await db.execute(select(User).filter(User.username == user.username))
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Имя пользователя уже занято")
@@ -64,6 +65,7 @@ class ConfirmRegistration(BaseModel):
 
 @router.post("/confirm-registration")
 async def confirm_registration(req: ConfirmRegistration, db: AsyncSession = Depends(get_db)):
+    req.username = req.username.strip()
     # Verify TOTP code with the secret
     totp = pyotp.TOTP(req.totp_secret)
     if not totp.verify(req.totp_code, valid_window=1):
@@ -97,6 +99,7 @@ class LoginRequest(BaseModel):
 
 @router.post("/login", response_model=Token)
 async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
+    request.username = request.username.strip()
     result = await db.execute(select(User).filter(User.username == request.username))
     user = result.scalars().first()
 
