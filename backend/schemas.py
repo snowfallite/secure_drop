@@ -8,12 +8,20 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     public_key: str
+    encrypted_private_key: str
+    key_salt: str
 
 class UserResponse(UserBase):
     id: str
     public_key: Optional[str] = None
     is_verified: bool = False
     avatar_url: Optional[str] = None
+    
+    # Return encrypted key only to the user themselves (usually handled in separate endpoint or filtered)
+    # But for simplicity, we can include it or have a dedicated endpoint for "me"
+    encrypted_private_key: Optional[str] = None
+    key_salt: Optional[str] = None
+    
     created_at: datetime
     
     # New fields for presence

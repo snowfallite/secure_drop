@@ -19,6 +19,12 @@ async def lifespan(app: FastAPI):
             await conn.execute(text(
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT"
             ))
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS encrypted_private_key TEXT"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS key_salt TEXT"
+            ))
         except Exception as e:
             print(f"Migration note: {e}")
     yield

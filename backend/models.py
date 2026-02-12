@@ -21,6 +21,11 @@ class User(Base):
     public_key = Column(String, nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     avatar_url = Column(Text, nullable=True)
+    
+    # E2EE Sync fields
+    encrypted_private_key = Column(Text, nullable=True)
+    key_salt = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), default=func.now())
 
     chats = relationship("ChatParticipant", back_populates="user")
@@ -34,6 +39,7 @@ class Chat(Base):
 
     participants = relationship("ChatParticipant", back_populates="chat")
     messages = relationship("Message", back_populates="chat")
+    created_by = Column(String, ForeignKey("users.id"), nullable=True) # Creator of the chat
 
 class ChatParticipant(Base):
     __tablename__ = "chat_participants"

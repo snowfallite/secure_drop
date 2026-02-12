@@ -51,7 +51,7 @@ async def create_chat(
             return ChatResponse(id=c.id, created_at=c.created_at, participants=[p.user for p in c.participants])
 
     # Create new
-    chat = Chat()
+    chat = Chat(created_by=current_user.id)
     db.add(chat)
     await db.commit()
     await db.refresh(chat)
@@ -88,6 +88,16 @@ async def get_chats(
     if not chats:
         return []
 
+    # Filter: Show chat ONLY if (I created it) OR (It has messages)
+    # We need to know if it has messages. 
+    # The subquery below fetches messages. We can use that?
+    # Or we can check `chat.messages` if we eagerly loaded it? We removed selectinload(Chat.messages).
+    # Re-adding selectinload(Chat.messages) is heavy.
+    # Better: Filter AFTER fetching last message? 
+    # If `last_message` is None AND `chat.created_by != current_user.id` -> Skip.
+    
+    # We will refine the list AFTER step 3 (last message fetch).
+    
     chat_ids = [c.id for c in chats]
 
     # 3. Fetch Last Message for each chat efficiently
@@ -180,6 +190,11 @@ async def get_chats(
             participants_resp.append(u_resp)
 
         last_msg = last_msg_map.get(chat.id)
+
+        # Lazy Chat Logic: 
+        # If I did NOT create the chat AND there are no messages, I should NOT see it.
+        if not last_msg and chat.created_by != current_user.id:
+            continue
             
         response.append({
             "id": chat.id,

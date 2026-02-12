@@ -22,8 +22,18 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # Phase 1: Generate TOTP secret and QR — user NOT created yet
+class UserRegisterStart(BaseModel):
+    username: str
+
+@router.get("/check")
+async def check_username(username: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).filter(User.username == username))
+    if result.scalars().first():
+        return {"available": False}
+    return {"available": True}
+
 @router.post("/register")
-async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(user: UserRegisterStart, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).filter(User.username == user.username))
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Имя пользователя уже занято")
@@ -38,9 +48,8 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
     return {
         "username": user.username,
-        "public_key": user.public_key,
-        "secret": secret,
-        "qr_code": f"data:image/png;base64,{img_base64}"
+        "qr_code": f"data:image/png;base64,{img_base64}",
+        "secret": secret
     }
 
 
@@ -48,6 +57,8 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
 class ConfirmRegistration(BaseModel):
     username: str
     public_key: str
+    encrypted_private_key: str
+    key_salt: str
     totp_secret: str
     totp_code: str
 
@@ -67,6 +78,8 @@ async def confirm_registration(req: ConfirmRegistration, db: AsyncSession = Depe
         username=req.username,
         totp_secret=req.totp_secret,
         public_key=req.public_key,
+        encrypted_private_key=req.encrypted_private_key,
+        key_salt=req.key_salt,
         is_verified=True  # Verified because TOTP was confirmed
     )
     db.add(new_user)

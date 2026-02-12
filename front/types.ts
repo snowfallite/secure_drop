@@ -2,7 +2,8 @@ export enum MessageType {
   TEXT = 'TEXT',
   IMAGE = 'IMAGE',
   FILE = 'FILE',
-  AUDIO = 'AUDIO'
+  AUDIO = 'AUDIO',
+  EMOJI = 'EMOJI'
 }
 
 export interface User {
@@ -13,6 +14,8 @@ export interface User {
   is_verified?: boolean;
   is_online?: boolean;
   last_seen?: string;
+  encrypted_private_key?: string;
+  key_salt?: string;
 }
 
 export interface Message {

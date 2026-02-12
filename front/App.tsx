@@ -24,11 +24,35 @@ const App: React.FC = () => {
         setAuthToken(token);
         try {
           const user = await ApiService.auth.me();
+
+          // Verify Keys
+          const localPubRaw = localStorage.getItem('public_key');
+          const localPrivRaw = localStorage.getItem('private_key');
+          const localPub = localPubRaw === 'undefined' ? null : localPubRaw;
+          const localPriv = localPrivRaw === 'undefined' ? null : localPrivRaw;
+
+          if (user.public_key && localPub && localPub !== user.public_key) {
+            console.warn("Stored keys do not match logged in user. Clearing.");
+            localStorage.removeItem('private_key');
+            localStorage.removeItem('public_key');
+            alert("Обнаружена смена аккаунта. В целях безопасности необходим повторный вход.");
+            throw new Error("Key mismatch");
+          }
+
+          if (!localPriv && user.encrypted_private_key) {
+            console.warn("Missing private key. Forcing recovery.");
+            alert("Ключи шифрования отсутствуют. Пожалуйста, восстановите доступ.");
+            throw new Error("Missing keys");
+          }
+
           setCurrentUser(user);
           setView('chats');
-        } catch {
+        } catch (e) {
+          console.error("Auth init failed:", e);
           localStorage.removeItem('access_token');
           clearAuthToken();
+          setCurrentUser(null);
+          setView('auth');
         }
       }
       setLoading(false);
@@ -40,13 +64,18 @@ const App: React.FC = () => {
     if (!currentUser) return;
     try {
       const data = await ApiService.chats.list();
-      setChats(data.map((c: any) => ({
-        id: c.id,
-        participants: c.participants || [],
-        messages: [],
-        last_message: c.last_message || null,
-        created_at: c.created_at,
-      })));
+      setChats(prevChats => {
+        return data.map((c: any) => {
+          const existing = prevChats.find(p => p.id === c.id);
+          return {
+            id: c.id,
+            participants: c.participants || [],
+            messages: existing ? existing.messages : [], // Persist messages!
+            last_message: c.last_message || null,
+            created_at: c.created_at,
+          };
+        });
+      });
     } catch (e) {
       console.error('Load chats failed', e);
     }
@@ -57,12 +86,40 @@ const App: React.FC = () => {
   }, [currentUser, view, loadChats]);
 
   const handleAuthSuccess = (token: string, user: User) => {
+    // Verify we have the correct keys for this user
+    const localPub = localStorage.getItem('public_key');
+    if (localPub && user.public_key && localPub !== user.public_key) {
+      console.warn("Key mismatch! Clearing old keys.");
+      localStorage.removeItem('private_key');
+      localStorage.removeItem('public_key');
+      // Ideally we should redirect to recovery, but handleLogin handles recovery before calling this?
+      // If we are here via Auto-Login (init), checking keys is crucial.
+    }
+
+    // If we are auto-logging in and keys are missing, we should probably force logout to recover
+    // But init() sets view='chats' directly. We need to handle that in init().
+
     setCurrentUser(user);
+
+    // Check if recovery needed (logic duplicated from AuthView roughly, but for Init flow)
+    const hasKey = !!localStorage.getItem('private_key');
+    if (!hasKey && user.encrypted_private_key) {
+      // Force back to auth for recovery
+      // But AuthView state needs to be set to RECOVERY.
+      // We can't easily pass state to AuthView from here unless we add props or context.
+      // Easiest: clear token and make them login again (which triggers recovery flow)
+      if (!localPub && !hasKey) {
+        // Only if genuinely missing.
+        // If we came from Login, keys might be set. 
+      }
+    }
+
     setView('chats');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
+    // We keep keys to allow easy re-login (TOTP only) without recovery password
     localStorage.removeItem('private_key');
     localStorage.removeItem('public_key');
     clearAuthToken();

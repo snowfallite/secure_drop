@@ -1,80 +1,54 @@
-# Server Deployment Guide (Specific)
+# Server Deployment Guide (Containerized Caddy)
 
-Since you already have Caddy, Xray, and Postgres running on your server, here is how to deploy Secure Drop without conflicts.
+We have containerized Caddy, so it now runs inside Docker Compose alongside the app.
 
-## 1. Updated `docker-compose.yml`
-I have updated `docker-compose.yml` to:
--   Bind ports only to `127.0.0.1` (localhost) so they don't conflict with your external interfaces.
--   Move Postgres to port `5433` (internal mapping) to avoid conflict with your existing Postgres on `5432`.
--   Expose Frontend on `127.0.0.1:3000` and Backend on `127.0.0.1:8000`.
+## ⚠ Important Pre-requisite
+**You must STOP the Caddy running on your host machine** to avoid port conflicts (80/443).
 
-## 2. Prepare Domain
-You need a domain for the chat. For example: `your-domain`.
-Ensure this domain points to your server IP (A record).
-
-## 3. Update Caddyfile
-Add the following block to your `/etc/caddy/Caddyfile`.
-
-**Important**: Since you use `listener_wrappers { proxy_protocol }`, your Caddy expects traffic via Xray/Proxy. Ensure Xray sends traffic for this new domain to Caddy.
-
-```caddy
-# Add this block to your Caddyfile
-https://your-domain {
-  # Forward frontend requests to Docker container
-  reverse_proxy 127.0.0.1:3000
-
-  # Forward API requests to Backend container
-  handle /api/* {
-    # Remove /api prefix if your backend doesn't expect it, 
-    # BUT your backend routers have prefixes /auth, /users.
-    # The frontend calls /auth..., not /api/auth... usually.
-    # If your frontend is built to call /auth, /users directly:
-    reverse_proxy 127.0.0.1:8000
-  }
-  
-  # Forward specific backend paths if not using /api prefix logic above:
-  handle /auth/* {
-    reverse_proxy 127.0.0.1:8000
-  }
-  handle /users/* {
-    reverse_proxy 127.0.0.1:8000
-  }
-  handle /chats/* {
-    reverse_proxy 127.0.0.1:8000
-  }
-
-  log {
-    output file /var/lib/caddy/secure_drop_access.log
-  }
-}
+```bash
+systemctl stop caddy
+systemctl disable caddy  # Optional: prevent it from starting on boot
 ```
 
-**Alternative (Simpler)**:
-If your backend routes are at root (`/auth`, `/chats`), just matching paths is easiest:
+## 1. Environment Setup
 
-```caddy
-https://your-domain {
-  # Backend endpoints
-  reverse_proxy /auth/* 127.0.0.1:8000
-  reverse_proxy /users/* 127.0.0.1:8000
-  reverse_proxy /chats/* 127.0.0.1:8000
-  reverse_proxy /docs* 127.0.0.1:8000
-  reverse_proxy /openapi.json* 127.0.0.1:8000
+1.  **Clone/Update Project**: Ensure you have the latest `docker-compose.yml` and `Caddyfile`.
+2.  **Environment Variables**: Create or update `.env` file:
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+    *   Set `ALLOW_ORIGINS=https://domen`
+    *   Set `SITE_ADDRESS=https://domen` (or `:80` for local dev)
+    *   Set `POSTGRES_PASSWORD`, `SECRET_KEY`, etc.
 
-  # Frontend (Catch-all for SPA)
-  reverse_proxy * 127.0.0.1:3000
-}
+## 2. Deployment
+
+Run the entire stack (Database, Redis, Backend, Frontend, Caddy) with one command:
+
+```bash
+docker-compose down  # Stop old containers if any
+docker-compose up -d --build
 ```
 
-## 4. Deploy
-1.  Upload the project to your server.
-2.  Set up `.env` (copy `.env.example`).
-3.  Set `ALLOW_ORIGINS=https://your-domain` in `.env`.
-4.  Run:
-    ```bash
-    docker compose up --build -d
-    ```
-5.  Reload Caddy:
-    ```bash
-    systemctl reload caddy
-    ```
+## 3. Verification
+
+Check if all containers are running:
+
+```bash
+docker-compose ps
+```
+
+You should see 5 containers: `db`, `redis`, `backend`, `frontend`, `caddy`.
+
+## 4. Logs
+
+To check Caddy logs (for SSL certificate issuance, etc.):
+
+```bash
+docker-compose logs -f caddy
+```
+
+## 5. Security Note regarding E2EE
+Currently, the application **DOES NOT** implement End-to-End Encryption. Messages are stored in plain text.
+**Do not use for sensitive communications until E2EE is implemented.**

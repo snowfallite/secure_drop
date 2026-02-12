@@ -31,14 +31,27 @@ api.interceptors.response.use(
 
 export const ApiService = {
     auth: {
-        register: async (username: string, publicKey: string) => {
-            const r = await api.post('/auth/register', { username, public_key: publicKey });
+        check: async (username: string) => {
+            const r = await api.get<{ available: boolean }>('/auth/check', { params: { username } });
             return r.data;
         },
-        confirmRegistration: async (username: string, publicKey: string, totpSecret: string, totpCode: string) => {
+        register: async (username: string) => {
+            const r = await api.post('/auth/register', { username });
+            return r.data;
+        },
+        confirmRegistration: async (
+            username: string,
+            publicKey: string,
+            encryptedPrivateKey: string,
+            keySalt: string,
+            totpSecret: string,
+            totpCode: string
+        ) => {
             const r = await api.post('/auth/confirm-registration', {
                 username,
                 public_key: publicKey,
+                encrypted_private_key: encryptedPrivateKey,
+                key_salt: keySalt,
                 totp_secret: totpSecret,
                 totp_code: totpCode
             });

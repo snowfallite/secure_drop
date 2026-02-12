@@ -89,31 +89,29 @@ export const Profile: React.FC<ProfileProps> = ({ user, onUpdateUser, onLogout }
       {/* Username */}
       <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
         <label className="text-[10px] font-semibold uppercase tracking-wider text-glass-muted block mb-2">Имя пользователя</label>
-        {editingName ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <input
-                className="flex-1 bg-black/30 border border-white/10 rounded-xl py-2.5 px-3 text-white focus:outline-none focus:border-accent-primary text-sm"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
-              />
-              <button onClick={handleSaveName} className="p-2.5 rounded-xl bg-accent-primary/80 hover:bg-accent-primary transition-colors">
-                <Check className="w-4 h-4 text-white" />
-              </button>
-            </div>
-            {nameError && <p className="text-accent-danger text-xs">{nameError}</p>}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <p className="text-white font-medium text-lg">{user.username}</p>
-            <button onClick={() => { setEditingName(true); setNewName(user.username); }} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-              <Pencil className="w-4 h-4 text-glass-muted" />
+
+        <div className={editingName ? "flex flex-col gap-2" : "hidden"}>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 bg-black/30 border border-white/10 rounded-xl py-2.5 px-3 text-white focus:outline-none focus:border-accent-primary text-sm"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false); }}
+            />
+            <button onClick={handleSaveName} className="p-2.5 rounded-xl bg-accent-primary/80 hover:bg-accent-primary transition-colors">
+              <Check className="w-4 h-4 text-white" />
             </button>
-            {nameSaved && <span className="text-accent-success text-xs ml-2">Сохранено ✓</span>}
           </div>
-        )}
+          {nameError && <p className="text-accent-danger text-xs">{nameError}</p>}
+        </div>
+
+        <div className={!editingName ? "flex items-center justify-between" : "hidden"}>
+          <p className="text-white font-medium text-lg">{user.username}</p>
+          <button onClick={() => { setEditingName(true); setNewName(user.username); }} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <Pencil className="w-4 h-4 text-glass-muted" />
+          </button>
+          {nameSaved && <span className="text-accent-success text-xs ml-2">Сохранено ✓</span>}
+        </div>
       </div>
 
       {/* Security Info */}

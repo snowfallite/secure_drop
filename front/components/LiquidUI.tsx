@@ -93,11 +93,12 @@ export const Input: React.FC<InputProps> = ({ label, icon, className = '', ...pr
       {label && <label className="text-xs font-semibold uppercase tracking-wider text-glass-muted ml-1">{label}</label>}
       <div className="relative">
         {icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-glass-muted">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-glass-muted pointer-events-none">
             {icon}
           </div>
         )}
         <input
+          autoComplete="off"
           className={`
             w-full bg-black/20 
             border-b-2 border-white/10 

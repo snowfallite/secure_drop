@@ -6,6 +6,7 @@ import { ApiService } from '../services/api';
 import { MOCK_EMOJIS } from '../constants';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { CryptoService } from '../services/crypto';
 
 interface ChatRoomProps {
   chat: ChatSession;
@@ -20,46 +21,173 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
   const [showEmoji, setShowEmoji] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
-  const [messages, setMessages] = useState<Message[]>(chat.messages || []);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [rawMessages, setRawMessages] = useState<Message[]>(chat.messages || []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
+  // E2EE State
+  const [sessionKey, setSessionKey] = useState<CryptoKey | null>(null);
+  const [keyError, setKeyError] = useState('');
+
   const otherUser = chat.participants?.find(p => p.id !== currentUser.id) || chat.participants?.[0];
+
+  // 1. Derive Session Key on Load
+  useEffect(() => {
+    const initCrypto = async () => {
+      try {
+        const myPrivBase64 = localStorage.getItem('private_key');
+        if (!myPrivBase64 || myPrivBase64 === 'undefined') {
+          // Key missing at runtime? Force logout/recovery.
+          localStorage.removeItem('access_token');
+          window.location.reload();
+          return;
+        }
+
+        let otherPubBase64 = otherUser?.public_key;
+        if (!otherPubBase64 || otherPubBase64 === 'undefined' || otherPubBase64.includes('undefined')) {
+          setKeyError('Encryption unavailable (Partner keys corrupted)');
+          return;
+        }
+
+        const myPriv = await CryptoService.importPrivateKey(myPrivBase64);
+        const otherPub = await CryptoService.importPublicKey(otherPubBase64);
+        const shared = await CryptoService.deriveSharedKey(myPriv, otherPub);
+        setSessionKey(shared);
+      } catch (err) {
+        console.error('E2EE Init Failed:', err);
+        setKeyError('Crypto Error');
+      }
+    };
+    if (chat && otherUser) initCrypto();
+  }, [chat.id, otherUser?.id]);
+
+
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  useEffect(() => { setMessages(chat.messages || []); }, [chat.messages]);
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  // Poll every 3s
+  // Poll
   useEffect(() => {
     const poll = async () => {
       try {
         const newMsgs = await ApiService.chats.getMessages(chat.id);
-        setMessages(prev => JSON.stringify(newMsgs) !== JSON.stringify(prev) ? newMsgs : prev);
+        // Compare with RAW chat.messages to see if changed
+        // But chat.messages isn't automatically updated here unless parent updates it.
+        // Yet we use local `messages` state which is decrypted.
+        // Problem: if we pull new messages, they are encrypted. 
+        // We need to decrypt them before comparing or setting?
+        // Or just setChat in parent?
+        // Actually, `ApiService.chats.getMessages` returns array.
+        // We should ideally update the PARENT state (which passes `chat` prop), 
+        // or handle logic here fully. Currently `useEffect [chat.messages]` handles updates.
+        // But polling here only checks difference? 
+        // The previous code did: setMessages(prev => ...).
+        // If we poll, we get ENCRYPTED messages. 
+        // We can't easily compare Encrypted Vs Decrypted in state.
+        // Better strategy: Calls `onPoll` prop? Or just re-run the decryption effect when data comes.
+        // Let's rely on Parent polling or if we stick to local polling:
+        // We fetch encrypted, check if different from *last fetched encrypted* (need ref), then update state -> trigger decrypt effect.
+
+        // Simplified: Just decrypt newly fetched always.
+        // Optimization: Checking last message ID.
+        const lastMsg = newMsgs[newMsgs.length - 1];
+        // We need access to current raw messages to compare? 
+        // Let's just trust `onSendMessage` updates and maybe occasional manual refresh?
+        // The original code had polling. I will keep it but it needs to trigger the Decrypt Effect.
+        // We can set a separate `rawMessages` state?
+        // Refactoring:
+        // 1. `rawMessages` state.
+        // 2. `useEffect([rawMessages, sessionKey])` -> sets `messages` (decrypted).
+        // 3. Polling updates `rawMessages`.
+
+        // DOING THIS NOW:
+        setRawMessages(prev => {
+          const isSame = JSON.stringify(newMsgs) === JSON.stringify(prev);
+          return isSame ? prev : newMsgs;
+        });
       } catch { }
     };
-    poll();
     pollRef.current = setInterval(poll, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [chat.id]);
 
+  // 3. Sync with props ONLY if props have messages (initial load or full refresh)
+  // Fix for flickering: If parent polling returns chat WITHOUT messages, ignore it.
+  useEffect(() => {
+    if (chat.messages && chat.messages.length > 0) {
+      setRawMessages(chat.messages);
+    } else if (rawMessages.length === 0 && chat.messages) {
+      // Initial load of empty chat
+      setRawMessages(chat.messages);
+    }
+  }, [chat.messages]);
+
+  // Re-run decryption when rawMessages or key changes
+  useEffect(() => {
+    const run = async () => {
+      if (!sessionKey) {
+        setMessages(rawMessages);
+        return;
+      }
+      const decrypted = await Promise.all(rawMessages.map(async (msg) => {
+        try {
+          // console.log("Decrypting msg:", msg.id, msg.content);
+          if (msg.content.includes(':')) {
+            const [iv, cipher] = msg.content.split(':');
+            const plain = await CryptoService.decrypt(cipher, iv, sessionKey);
+            // console.log("Decrypted result:", plain);
+            if (!plain) return { ...msg, content: 'EMPTY_DECRYPT' }; // Debug marker
+            return { ...msg, content: plain };
+          }
+          return msg;
+        } catch (e) {
+          console.error("Decryption error for msg:", msg.id, e);
+          return { ...msg, content: '🔒 Ошибка расшифровки' };
+        }
+      }));
+      setMessages(decrypted);
+    };
+    run();
+  }, [rawMessages, sessionKey]);
+
+
   const handleSend = async () => {
     if (!inputText.trim() || sending) return;
+    if (!sessionKey && !keyError) return; // Wait for key?
+
+    // If keyError (no key for valid reason, e.g. other user old), maybe allow plaintext?
+    // User requested E2E. If E2E fails, we should probably Block or Warn.
+    // For now: if sessionKey exists, Encrypt. Else plain (or block).
+
     const text = inputText.trim();
     setSending(true);
     setInputText('');
     setShowEmoji(false);
     try {
-      await onSendMessage(chat.id, text, MessageType.TEXT, replyingTo?.id);
+      let contentToSend = text;
+
+      if (sessionKey) {
+        const { cipherText, iv } = await CryptoService.encrypt(text, sessionKey);
+        contentToSend = `${iv}:${cipherText}`;
+      } else {
+        alert("Ошибка шифрования: ключи не согласованы. Сообщение не может быть отправлено.");
+        setSending(false);
+        return;
+      }
+
+      await onSendMessage(chat.id, contentToSend, MessageType.TEXT, replyingTo?.id);
       setReplyingTo(null);
+      // Let polling or parent update handle the rest? 
+      // Original code fetched new msgs immediately.
       const newMsgs = await ApiService.chats.getMessages(chat.id);
-      setMessages(newMsgs);
+      setRawMessages(newMsgs);
     } finally { setSending(false); }
   };
 
@@ -73,10 +201,21 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
     if (file.size > 5 * 1024 * 1024) { alert('Макс. 5 МБ'); return; }
     const reader = new FileReader();
     reader.onloadend = async () => {
-      await onSendMessage(chat.id, reader.result as string, MessageType.IMAGE, replyingTo?.id);
+      const base64Img = reader.result as string;
+      let contentToSend = base64Img;
+
+      if (sessionKey) {
+        const { cipherText, iv } = await CryptoService.encrypt(base64Img, sessionKey);
+        contentToSend = `${iv}:${cipherText}`;
+      } else {
+        alert("Ошибка шифрования: ключи не согласованы.");
+        return;
+      }
+
+      await onSendMessage(chat.id, contentToSend, MessageType.IMAGE, replyingTo?.id);
       setReplyingTo(null);
       const newMsgs = await ApiService.chats.getMessages(chat.id);
-      setMessages(newMsgs);
+      setRawMessages(newMsgs);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -91,7 +230,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
     if (!confirm('Удалить сообщение?')) return;
     try {
       await ApiService.chats.deleteMessage(chat.id, msgId);
-      setMessages(prev => prev.filter(m => m.id !== msgId));
+      setRawMessages(prev => prev.filter(m => m.id !== msgId));
     } catch { }
   };
 

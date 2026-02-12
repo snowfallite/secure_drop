@@ -1,0 +1,44 @@
+{
+    email admin@vega-connect.icu
+}
+
+{$SITE_ADDRESS} {
+    # 1. API and WebSocket
+    handle /auth/* {
+        reverse_proxy backend:8000
+    }
+    handle /users/* {
+        reverse_proxy backend:8000
+    }
+    handle /chats/* {
+        reverse_proxy backend:8000
+    }
+    handle /ws/* {
+        reverse_proxy backend:8000
+    }
+    handle /docs* {
+        reverse_proxy backend:8000
+    }
+    handle /openapi.json* {
+        reverse_proxy backend:8000
+    }
+
+    # 2. Frontend
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss: https:;"
+    }
+
+    log {
+        output stderr
+        level INFO
+    }
+}

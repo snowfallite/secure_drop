@@ -3,6 +3,7 @@ import { MessageSquarePlus, Search, Users, Trash2 } from 'lucide-react';
 import { ChatSession, User } from '../types';
 import { Avatar } from './LiquidUI';
 import { ApiService } from '../services/api';
+import { CryptoService } from '../services/crypto';
 
 interface ChatListProps {
   chats: ChatSession[];
@@ -13,7 +14,6 @@ interface ChatListProps {
   onRefresh: () => void;
 }
 
-// Proper Russian relative time
 // Proper Russian relative time
 function timeAgo(dateStr: string): string {
   const now = new Date();
@@ -43,10 +43,54 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, currentUser, onSelect
   const [createError, setCreateError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Decryption for previews
+  const [decryptedPreviews, setDecryptedPreviews] = useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    const decryptPreviews = async () => {
+      const newPreviews: Record<string, string> = {};
+      const privateKeyStr = localStorage.getItem('private_key');
+      if (!privateKeyStr) return;
+
+      try {
+        const myPriv = await CryptoService.importPrivateKey(privateKeyStr);
+
+        for (const chat of chats) {
+          const lastMsg = chat.last_message;
+          if (!lastMsg || !lastMsg.content.includes(':')) continue;
+          if (decryptedPreviews[lastMsg.id]) continue;
+
+          const otherUser = chat.participants?.find(p => p.id !== currentUser.id) || chat.participants?.[0];
+          if (!otherUser?.public_key) continue;
+
+          try {
+            // Expensive deriving?
+            const otherPub = await CryptoService.importPublicKey(otherUser.public_key);
+            const sessionKey = await CryptoService.deriveSharedKey(myPriv, otherPub);
+
+            const parts = lastMsg.content.split(':');
+            if (parts.length === 2) {
+              const plain = await CryptoService.decrypt(parts[1], parts[0], sessionKey);
+              newPreviews[lastMsg.id] = plain;
+            }
+          } catch (e) { }
+        }
+        if (Object.keys(newPreviews).length > 0) {
+          setDecryptedPreviews(prev => ({ ...prev, ...newPreviews }));
+        }
+      } catch (e) { }
+    };
+    decryptPreviews();
+  }, [chats]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError('');
     if (!newUsername.trim()) return;
+    if (newUsername.trim() === currentUser.username) {
+      setCreateError('Нельзя начать чат с самим собой');
+      return;
+    }
     try {
       await onNewChat(newUsername.trim());
       setNewUsername('');
@@ -169,14 +213,6 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, currentUser, onSelect
                     <span style={{ fontWeight: 600, fontSize: 15, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {otherUser.username}
                     </span>
-                    {/* Show time of last message, NOT last seen, because that's what chat list usually does. 
-                         User asked "display how long ago was online" -> this is usually in chat HEADER or detailed profile.
-                         But maybe user wants to see it IN LIST? 
-                         Let's put "online" or "5m ago" near the name if they have no messages? 
-                         Standard is: Message time on right. Online status near name or avatar.
-                         I added green dot for online.
-                         Let's just keep last message time on right. 
-                     */}
                     {lastMsg && (
                       <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap', marginLeft: 8 }}>
                         {timeAgo(lastMsg.created_at)}
@@ -185,7 +221,10 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, currentUser, onSelect
                   </div>
                   <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
                     {lastMsg
-                      ? (lastMsg.type === 'IMAGE' ? '📷 Фото' : truncateMsg(lastMsg.content))
+                      ? (lastMsg.content.includes(':')
+                        ? (decryptedPreviews[lastMsg.id] || '🔒 Сообщение')
+                        : (lastMsg.type === 'IMAGE' ? '📷 Фото' : truncateMsg(lastMsg.content))
+                      )
                       : (isOnline ? <span style={{ color: '#4EB88B' }}>В сети</span> : <span>Был(а) {lastSeenText}</span>)
                     }
                   </p>

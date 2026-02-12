@@ -26,8 +26,9 @@ services:
     build: 
       context: .
       dockerfile: backend/Dockerfile
-    ports:
-      - "127.0.0.1:8000:8000"
+    # Ports removed because traffic is routed through Caddy
+    # ports:
+    #   - "127.0.0.1:8000:8000"
     environment:
       # Production: set these in .env file
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://secure_drop_user:secure_drop_password@db:5432/secure_drop_db}
@@ -35,7 +36,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change_me_in_production_simulated_secret}
       ALGORITHM: ${ALGORITHM:-HS256}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      ALLOW_ORIGINS: ${ALLOW_ORIGINS:-https://chat.vega-connect.icu,http://localhost:3000}
+      ALLOW_ORIGINS: ${ALLOW_ORIGINS:-https://chat.vega-connect.icu}
       TZ: Europe/Moscow
     depends_on:
       - db
@@ -49,10 +50,30 @@ services:
       dockerfile: front/Dockerfile
     environment:
       TZ: Europe/Moscow
-    ports:
-      - "127.0.0.1:3000:80" # Exposed on localhost:3000 for Caddy to proxy to
+    # Ports removed because traffic is routed through Caddy
+    # ports:
+    #   - "127.0.0.1:3000:80"
     depends_on:
       - backend
 
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      TZ: Europe/Moscow
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
