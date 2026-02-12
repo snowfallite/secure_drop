@@ -117,36 +117,36 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, currentUser, onSelect
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 24, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>Сообщения</h2>
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-2xl font-bold text-glass-text">Сообщения</h2>
         <button
           onClick={() => { setIsCreating(!isCreating); setCreateError(''); }}
-          style={{ padding: 10, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer' }}
+          className="p-2.5 rounded-full bg-glass-surface border border-glass-border cursor-pointer hover:bg-glass-highlight transition-colors"
         >
-          <MessageSquarePlus style={{ width: 20, height: 20, color: '#0A3A6B' }} />
+          <MessageSquarePlus className="w-5 h-5 text-accent-primary" />
         </button>
       </div>
 
       {/* New Chat Form */}
       {isCreating && (
-        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ position: 'relative' }}>
-              <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: 'rgba(255,255,255,0.4)' }} />
+        <div className="bg-glass-surface border border-glass-border rounded-xl p-4 mb-4">
+          <form onSubmit={handleCreate} className="flex flex-col gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-glass-muted" />
               <input
-                style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px 12px 36px', color: 'white', fontSize: 14, outline: 'none' }}
+                className="w-full bg-glass-background/50 border border-glass-border rounded-xl py-3 pl-9 pr-4 text-glass-text text-sm outline-none focus:border-accent-primary"
                 placeholder="Имя пользователя..."
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
                 autoFocus
               />
             </div>
-            {createError && <p style={{ color: '#D44A4A', fontSize: 12, textAlign: 'center' }}>{createError}</p>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button type="button" onClick={() => setIsCreating(false)} style={{ padding: '8px 16px', fontSize: 12, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer' }}>
+            {createError && <p className="text-accent-danger text-xs text-center">{createError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 text-xs text-glass-muted hover:text-glass-text transition-colors">
                 Отмена
               </button>
-              <button type="submit" disabled={!newUsername.trim()} style={{ padding: '8px 16px', fontSize: 12, background: !newUsername.trim() ? 'rgba(10,58,107,0.3)' : 'rgba(10,58,107,0.8)', color: 'white', borderRadius: 12, border: 'none', cursor: 'pointer' }}>
+              <button type="submit" disabled={!newUsername.trim()} className={`px-4 py-2 text-xs text-white rounded-xl transition-colors bg-accent-primary ${!newUsername.trim() ? 'opacity-30' : ''}`}>
                 Начать чат
               </button>
             </div>
@@ -155,12 +155,12 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, currentUser, onSelect
       )}
 
       {/* Chat List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 32 }}>
+      <div className="flex flex-col gap-2 pb-8">
         {chats.length === 0 ? (
-          <div style={{ textAlign: 'center', paddingTop: 80, color: 'rgba(255,255,255,0.3)' }}>
-            <Users style={{ width: 56, height: 56, margin: '0 auto 16px', opacity: 0.2 }} />
-            <p style={{ fontSize: 18, fontWeight: 500, marginBottom: 4 }}>Пока нет чатов</p>
-            <p style={{ fontSize: 14, opacity: 0.6 }}>Нажмите + чтобы начать</p>
+          <div className="text-center pt-20 text-glass-muted">
+            <Users className="w-14 h-14 mx-auto mb-4 opacity-20" />
+            <p className="text-lg font-medium mb-1">Пока нет чатов</p>
+            <p className="text-sm opacity-60">Нажмите + чтобы начать</p>
           </div>
         ) : (
           chats.map((chat) => {
@@ -177,64 +177,41 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, currentUser, onSelect
               <div
                 key={chat.id}
                 onClick={() => !isDeleting && onSelectChat(chat)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '14px 16px',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: 16,
-                  cursor: isDeleting ? 'default' : 'pointer',
-                  opacity: isDeleting ? 0.5 : 1,
-                  transition: 'background 0.15s',
-                  position: 'relative'
-                }}
-                className="hover:bg-white/[0.06] active:scale-[0.98]"
+                className={`flex items-center gap-3.5 p-3.5 bg-glass-surface border border-glass-border rounded-2xl cursor-pointer transition-all hover:bg-glass-highlight active:scale-[0.98] relative ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
               >
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <Avatar name={otherUser.username} src={otherUser.avatar_url} size="md" />
                   {isOnline && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      right: 0,
-                      width: 10,
-                      height: 10,
-                      borderRadius: '50%',
-                      background: '#4EB88B',
-                      border: '1.5px solid #050505'
-                    }} />
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-accent-success border-2 border-glass-background" />
                   )}
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                    <span style={{ fontWeight: 600, fontSize: 15, color: 'rgba(255,255,255,0.9)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className="font-semibold text-[15px] text-glass-text truncate">
                       {otherUser.username}
                     </span>
                     {lastMsg && (
-                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                      <span className="text-[11px] text-glass-muted whitespace-nowrap ml-2">
                         {timeAgo(lastMsg.created_at)}
                       </span>
                     )}
                   </div>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
+                  <p className="text-[13px] text-glass-muted truncate m-0">
                     {lastMsg
                       ? (lastMsg.content.includes(':')
                         ? (decryptedPreviews[lastMsg.id] || '🔒 Сообщение')
                         : (lastMsg.type === 'IMAGE' ? '📷 Фото' : truncateMsg(lastMsg.content))
                       )
-                      : (isOnline ? <span style={{ color: '#4EB88B' }}>В сети</span> : <span>Был(а) {lastSeenText}</span>)
+                      : (isOnline ? <span className="text-accent-success">В сети</span> : <span>Был(а) {lastSeenText}</span>)
                     }
                   </p>
                 </div>
                 <button
                   onClick={(e) => handleDelete(e, chat.id)}
-                  style={{ padding: 8, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4 }}
-                  className="hover:!opacity-100 hover:bg-red-500/20 transition-opacity"
+                  className="p-2 rounded-full hover:bg-red-500/20 transition-colors opacity-40 hover:opacity-100 group"
                 >
-                  <Trash2 style={{ width: 16, height: 16, color: '#D44A4A' }} />
+                  <Trash2 className="w-4 h-4 text-accent-danger" />
                 </button>
               </div>
             );

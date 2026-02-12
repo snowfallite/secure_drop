@@ -37,9 +37,9 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       onClick={onClick}
       className={`
         relative overflow-hidden
-        bg-white/[0.04] 
-        border border-white/[0.08] 
-        shadow-[0_4px_20px_0_rgba(0,0,0,0.3)] 
+        bg-glass-surface 
+        border border-glass-border 
+        shadow-xl
         rounded-[24px] 
         p-4 sm:p-6
         text-glass-text
@@ -64,10 +64,10 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = "relative px-6 py-3 rounded-[18px] font-medium text-sm tracking-wide transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden";
 
   const variants = {
-    primary: "bg-accent-primary/80 hover:bg-accent-primary text-white border border-white/10",
-    secondary: "bg-accent-secondary/80 hover:bg-accent-secondary text-white border border-white/10",
-    danger: "bg-accent-danger/80 hover:bg-accent-danger text-white border border-white/10",
-    ghost: "bg-transparent hover:bg-white/5 text-glass-text border border-transparent hover:border-white/10",
+    primary: "bg-accent-primary hover:bg-accent-primary text-white border border-glass-border hover:opacity-90",
+    secondary: "bg-accent-secondary hover:bg-accent-secondary text-white border border-glass-border hover:opacity-90",
+    danger: "bg-accent-danger hover:bg-accent-danger text-white border border-glass-border hover:opacity-90",
+    ghost: "bg-transparent hover:bg-glass-surface text-glass-text border border-transparent hover:border-glass-border",
   };
 
   return (
@@ -100,12 +100,12 @@ export const Input: React.FC<InputProps> = ({ label, icon, className = '', ...pr
         <input
           autoComplete="off"
           className={`
-            w-full bg-black/20 
-            border-b-2 border-white/10 
+            w-full bg-glass-surface 
+            border-b-2 border-glass-border 
             text-glass-text placeholder-glass-muted 
             py-3 px-4 ${icon ? 'pl-11' : ''}
             rounded-t-xl
-            focus:outline-none focus:border-accent-primary focus:bg-white/[0.02]
+            focus:outline-none focus:border-accent-primary focus:bg-glass-highlight
             transition-colors duration-200
           `}
           {...props}
@@ -124,7 +124,7 @@ export const Avatar: React.FC<{ src?: string, name: string, size?: 'sm' | 'md' |
   };
 
   return (
-    <div className={`relative rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-accent-primary to-accent-secondary border border-white/10 ${sizes[size]}`}>
+    <div className={`relative rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-accent-primary to-accent-secondary border border-glass-border ${sizes[size]}`}>
       {src ? (
         <img src={src} alt={name} className="w-full h-full object-cover" />
       ) : (

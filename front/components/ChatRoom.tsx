@@ -251,89 +251,60 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}
+      className="flex flex-col h-full w-full bg-glass-background"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
       {/* ===== HEADER ===== */}
-      <div
-        style={{
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '12px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          background: 'rgba(255,255,255,0.03)',
-          backdropFilter: 'blur(20px)',
-        }}
-      >
+      <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-glass-border bg-glass-background/80 backdrop-blur-md">
         <button
           onClick={onBack}
-          style={{ padding: 8, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
-          className="hover:bg-white/10 active:scale-95 transition-all"
+          className="p-2 -ml-2 rounded-full hover:bg-glass-highlight active:scale-95 transition-all text-glass-text"
         >
-          <ArrowLeft style={{ width: 22, height: 22, color: 'white' }} />
+          <ArrowLeft size={22} />
         </button>
         {otherUser && <Avatar name={otherUser.username} src={otherUser.avatar_url} size="sm" />}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 16, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-base text-glass-text truncate">
             {otherUser?.username || 'Чат'}
           </div>
-          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4 }} className="text-glass-muted">
+          <div className="text-[10px] flex items-center gap-1 text-glass-muted">
             {otherUser?.is_online ? (
               <span className="text-accent-success">On-line</span>
             ) : (
               <span>{otherUser?.last_seen ? `Был(а) ${fmtTime(otherUser.last_seen)}` : 'Off-line'}</span>
             )}
-            <span className="w-1 h-1 rounded-full bg-white/20 mx-1" />
-            <LockIcon style={{ width: 10, height: 10 }} /> E2E
+            <span className="w-1 h-1 rounded-full bg-glass-muted mx-1" />
+            <LockIcon size={10} /> E2E
           </div>
         </div>
         <button
           onClick={handleDeleteChat}
-          style={{ padding: 8, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
-          className="hover:bg-red-500/20 transition-colors"
+          className="p-2 rounded-full hover:bg-red-500/20 transition-colors group"
         >
-          <Trash2 style={{ width: 18, height: 18, color: '#ff6b6b', opacity: 0.7 }} />
+          <Trash2 size={18} className="text-red-400 opacity-70 group-hover:opacity-100" />
         </button>
       </div>
 
       {/* ===== MESSAGES ===== */}
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          padding: '20px 16px',
-        }}
-      >
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5">
         {messages.length === 0 && (
-          <div style={{ textAlign: 'center', paddingTop: 80, color: 'rgba(255,255,255,0.3)' }}>
-            <p style={{ fontSize: 14, marginBottom: 4 }}>Начните переписку</p>
-            <p style={{ fontSize: 11, opacity: 0.5 }}>Сообщения зашифрованы</p>
+          <div className="text-center pt-20 text-glass-muted">
+            <p className="text-sm mb-1">Начните переписку</p>
+            <p className="text-[11px] opacity-60">Сообщения зашифрованы</p>
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="flex flex-col gap-4">
           {messages.map((msg) => {
             const isMe = msg.sender_id === currentUser.id;
             return (
-              <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
-                <div style={{ maxWidth: '75%', display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', gap: 4 }}>
+              <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-4`}>
+                <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'} gap-1`}>
 
                   {/* Reply Preview */}
                   {msg.reply_to && (
                     <div
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        borderLeft: '2px solid #4EB88B',
-                        padding: '4px 8px',
-                        borderRadius: 4,
-                        fontSize: 12,
-                        color: 'rgba(255,255,255,0.6)',
-                        marginBottom: 2,
-                        cursor: 'pointer'
-                      }}
+                      className="bg-glass-highlight border-l-2 border-accent-success px-2 py-1 rounded text-xs text-glass-muted mb-1 cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => {
                         const el = document.getElementById(`msg-${msg.reply_to?.id}`);
                         el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -346,26 +317,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
 
                   <div
                     id={`msg-${msg.id}`}
-                    className="group"
-                    style={{
-                      position: 'relative',
-                      padding: '10px 16px',
-                      borderRadius: 18,
-                      fontSize: 14,
-                      lineHeight: 1.5,
-                      ...(isMe
-                        ? { background: 'rgba(10,58,107,0.8)', color: 'white', borderBottomRightRadius: 6 }
-                        : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.9)', borderBottomLeftRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }
-                      )
-                    }}
+                    className={`group relative px-4 py-2.5 rounded-2xl text-[14px] leading-relaxed border ${isMe
+                      ? 'bg-accent-primary text-white rounded-br-md border-transparent'
+                      : 'bg-glass-surface text-glass-text rounded-bl-md border-glass-border'
+                      }`}
                   >
-                    {msg.type === MessageType.TEXT && <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{msg.content}</p>}
-                    {msg.type === MessageType.EMOJI && <p style={{ fontSize: 36, margin: 0 }}>{msg.content}</p>}
-                    {msg.type === MessageType.IMAGE && <img src={msg.content} alt="" style={{ borderRadius: 12, maxWidth: '100%', maxHeight: 240, objectFit: 'cover' }} />}
+                    {msg.type === MessageType.TEXT && <p className="whitespace-pre-wrap break-words m-0">{msg.content}</p>}
+                    {msg.type === MessageType.EMOJI && <p className="text-4xl m-0">{msg.content}</p>}
+                    {msg.type === MessageType.IMAGE && <img src={msg.content} alt="" className="rounded-xl max-w-full max-h-[240px] object-cover" />}
 
                     {/* Actions (Reply/Delete) */}
                     <div className={`absolute top-0 ${isMe ? '-left-16' : '-right-16'} h-full flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity px-2`}>
-                      <button onClick={() => setReplyingTo(msg)} className="p-1 rounded-full hover:bg-white/10 text-glass-muted hover:text-white">
+                      <button onClick={() => setReplyingTo(msg)} className="p-1 rounded-full hover:bg-glass-highlight text-glass-muted hover:text-glass-text">
                         <ReplyIcon size={14} />
                       </button>
                       {isMe && (
@@ -375,14 +338,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{fmtTime(msg.created_at)}</span>
+                  <div className="flex items-center gap-1 text-[10px] text-glass-muted/60 px-1">
+                    <span>{fmtTime(msg.created_at)}</span>
                     {isMe && (
-                      <span className="text-accent-primary" style={{ display: 'flex' }}>
+                      <span className="flex items-center">
                         {msg.read_at ? (
-                          <CheckCheck size={14} className="text-[#60A5FA]" />
+                          <CheckCheck size={12} className="text-[#60A5FA]" />
                         ) : (
-                          <Check size={14} className="text-white/60" />
+                          <Check size={12} className="opacity-60" />
                         )}
                       </span>
                     )}
@@ -396,53 +359,37 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
       </div>
 
       {/* ===== INPUT BAR ===== */}
-      <div
-        style={{
-          flexShrink: 0,
-          padding: '8px 12px 16px 12px',
-          background: 'linear-gradient(to top, #050505 60%, transparent)',
-        }}
-      >
+      <div className="flex-shrink-0 px-3 pb-4 pt-2 bg-gradient-to-t from-glass-background via-glass-background to-transparent">
 
         {replyingTo && (
-          <div className="absolute bottom-full left-0 right-0 bg-glass-surface border-t border-white/10 p-2 flex items-center justify-between backdrop-blur-md">
+          <div className="absolute bottom-full left-0 right-0 bg-glass-background/95 border-t border-glass-border p-2 flex items-center justify-between backdrop-blur-md">
             <div className="flex flex-col text-xs pl-2 border-l-2 border-accent-primary">
               <span className="text-accent-primary font-medium">Ответ на сообщение</span>
-              <span className="text-white/60 truncate max-w-[200px]">{replyingTo.type === MessageType.IMAGE ? '📷 Фото' : replyingTo.content}</span>
+              <span className="text-glass-muted truncate max-w-[200px]">{replyingTo.type === MessageType.IMAGE ? '📷 Фото' : replyingTo.content}</span>
             </div>
-            <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-white/10 rounded-full">
-              <X size={16} className="text-white/60" />
+            <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-glass-highlight rounded-full">
+              <X size={16} className="text-glass-muted" />
             </button>
           </div>
         )}
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 999,
-            padding: '4px 8px',
-          }}
-        >
+        <div className="flex items-center gap-1 bg-glass-surface border border-glass-border rounded-full p-1 pl-2">
           <input type="file" accept="image/*" style={{ display: 'none' }} ref={fileInputRef} onChange={handleImageUpload} />
 
-          <button onClick={() => fileInputRef.current?.click()} style={{ padding: 10, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexShrink: 0 }} className="text-glass-muted hover:text-white transition-colors">
-            <ImageIcon style={{ width: 20, height: 20 }} />
+          <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full text-glass-muted hover:text-glass-text hover:bg-glass-highlight transition-all flex-shrink-0">
+            <ImageIcon size={20} />
           </button>
 
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <button onClick={() => setShowEmoji(!showEmoji)} style={{ padding: 10, borderRadius: '50%', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }} className={showEmoji ? 'text-accent-secondary' : 'text-glass-muted hover:text-white'}>
-              <Smile style={{ width: 20, height: 20 }} />
+          <div className="relative flex-shrink-0">
+            <button onClick={() => setShowEmoji(!showEmoji)} className={`p-2 rounded-full transition-all ${showEmoji ? 'text-accent-secondary' : 'text-glass-muted hover:text-glass-text hover:bg-glass-highlight'}`}>
+              <Smile size={20} />
             </button>
             {showEmoji && (
               <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowEmoji(false)} />
-                <div style={{ position: 'absolute', bottom: 48, left: 0, background: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 12, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, width: 256, zIndex: 50 }}>
+                <div className="fixed inset-0 z-40" onClick={() => setShowEmoji(false)} />
+                <div className="absolute bottom-14 left-0 bg-glass-background/95 border border-glass-border rounded-2xl p-3 grid grid-cols-5 gap-2 w-64 z-50 shadow-2xl backdrop-blur-xl">
                   {MOCK_EMOJIS.map(e => (
-                    <button key={e} onClick={() => setInputText(p => p + e)} style={{ fontSize: 24, background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 8 }} className="hover:bg-white/10 active:scale-90 transition-all">{e}</button>
+                    <button key={e} onClick={() => setInputText(p => p + e)} className="text-2xl hover:bg-glass-highlight rounded-lg p-1 transition-colors">{e}</button>
                   ))}
                 </div>
               </>
@@ -450,16 +397,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
           </div>
 
           <input
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              color: 'white',
-              padding: '10px 8px',
-              fontSize: 14,
-            }}
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-glass-text py-2.5 px-2 text-sm placeholder:text-glass-muted/50"
             placeholder="Сообщение..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
@@ -469,19 +407,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ chat, currentUser, onBack, o
           <button
             onClick={handleSend}
             disabled={!inputText.trim() || sending}
-            style={{
-              padding: 10,
-              borderRadius: '50%',
-              border: 'none',
-              cursor: !inputText.trim() || sending ? 'default' : 'pointer',
-              display: 'flex',
-              flexShrink: 0,
-              opacity: !inputText.trim() || sending ? 0.3 : 1,
-              transition: 'all 0.2s',
-            }}
-            className="bg-accent-primary active:scale-95"
+            className={`p-2.5 rounded-full flex-shrink-0 transition-all ${!inputText.trim() || sending ? 'bg-glass-highlight text-glass-muted cursor-default' : 'bg-accent-primary text-white active:scale-95 shadow-lg'}`}
           >
-            <Send style={{ width: 20, height: 20, color: 'white' }} />
+            <Send size={18} />
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { ChatList } from './components/ChatList';
 import { ChatRoom } from './components/ChatRoom';
 import { Profile } from './components/Profile';
 import { MessageSquare, User as UserIcon } from 'lucide-react';
+import { CryptoService } from './services/crypto';
 
 type View = 'auth' | 'chats' | 'room' | 'profile';
 
@@ -189,24 +190,44 @@ const App: React.FC = () => {
         // And it's not from me
         if (newMsg.sender_id !== currentUser.id) {
           // Identify sender name
-          const sender = chat.participants.find(p => p.id === newMsg.sender_id)?.username || 'Кто-то';
-          const content = newMsg.type === MessageType.IMAGE ? '📷 Фото' : newMsg.content;
+          const sender = chat.participants.find(p => p.id === newMsg.sender_id);
+          const senderName = sender?.username || 'Кто-то';
 
-          // Show notification if permitted
-          if (Notification.permission === 'granted') {
-            // Use SW registration if available for better mobile support
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification(`Сообщение от ${sender}`, {
-                  body: content,
-                  icon: '/icon.svg',
-                  tag: `msg-${newMsg.id}` // Prevent duplicate notifications
-                });
-              });
-            } else {
-              new Notification(`Сообщение от ${sender}`, { body: content, icon: '/icon.svg' });
+          let content = newMsg.type === MessageType.IMAGE ? '📷 Фото' : newMsg.content;
+
+          // Decrypt if needed
+          const showNotification = async () => {
+            if (newMsg.type === MessageType.TEXT && newMsg.content.includes(':')) {
+              try {
+                const myPrivStr = localStorage.getItem('private_key');
+                const otherPubStr = sender?.public_key;
+                if (myPrivStr && otherPubStr) {
+                  const myPriv = await CryptoService.importPrivateKey(myPrivStr);
+                  const otherPub = await CryptoService.importPublicKey(otherPubStr);
+                  const shared = await CryptoService.deriveSharedKey(myPriv, otherPub);
+                  const [iv, cipher] = newMsg.content.split(':');
+                  content = await CryptoService.decrypt(cipher, iv, shared);
+                }
+              } catch (e) {
+                content = '🔒 Зашифрованное сообщение';
+              }
             }
-          }
+
+            if (Notification.permission === 'granted') {
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(registration => {
+                  registration.showNotification(`Сообщение от ${senderName}`, {
+                    body: content,
+                    icon: '/icon.svg',
+                    tag: `msg-${newMsg.id}`
+                  });
+                });
+              } else {
+                new Notification(`Сообщение от ${senderName}`, { body: content, icon: '/icon.svg' });
+              }
+            }
+          };
+          showNotification();
         }
       }
 
@@ -246,7 +267,7 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505' }}>
+      <div className="fixed inset-0 flex items-center justify-center bg-glass-background">
         <div className="w-8 h-8 border-2 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
       </div>
     );
@@ -262,7 +283,7 @@ const App: React.FC = () => {
       id: activeChatId, participants: [], messages: []
     };
     return (
-      <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#050505' }}>
+      <div className="fixed inset-0 flex flex-col bg-glass-background">
         <ChatRoom
           chat={activeChat}
           currentUser={currentUser}
@@ -277,7 +298,7 @@ const App: React.FC = () => {
   // Chats / Profile with tab bar
   return (
     <div
-      style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#050505', color: 'white' }}
+      className="fixed inset-0 flex flex-col bg-glass-background text-glass-text"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
@@ -306,7 +327,7 @@ const App: React.FC = () => {
       <div style={{ flexShrink: 0 }} className="px-4 pb-6 pt-3">
         <div className="max-w-lg mx-auto bg-white/[0.05] border border-white/[0.08] rounded-2xl p-1.5 flex">
           <button
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-colors text-sm font-medium ${view === 'chats' ? 'bg-accent-primary/60 text-white' : 'text-glass-muted hover:text-white'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-colors text-sm font-medium ${view === 'chats' ? 'bg-accent-primary text-white shadow-lg' : 'text-glass-muted hover:text-glass-text hover:bg-glass-highlight'
               }`}
             onClick={() => setView('chats')}
           >
@@ -315,7 +336,7 @@ const App: React.FC = () => {
           </button>
           <div className="w-px bg-white/10 my-2" />
           <button
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-colors text-sm font-medium ${view === 'profile' ? 'bg-accent-primary/60 text-white' : 'text-glass-muted hover:text-white'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-colors text-sm font-medium ${view === 'profile' ? 'bg-accent-primary text-white shadow-lg' : 'text-glass-muted hover:text-glass-text hover:bg-glass-highlight'
               }`}
             onClick={() => setView('profile')}
           >

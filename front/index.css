@@ -7,10 +7,31 @@
   padding: 0;
 }
 
+:root {
+  --bg-color: #050505;
+  --text-main: rgba(255, 255, 255, 0.9);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --glass-surface: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.1);
+  --accent-primary: #0A3A6B;
+}
+
+.light-theme {
+  --bg-color: #F0F2F5; /* Light greyish background */
+  --text-main: #111827; /* Dark text */
+  --text-muted: #6B7280; /* Grey text */
+  --glass-surface: rgba(255, 255, 255, 0.7); /* White glass */
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-highlight: rgba(0, 0, 0, 0.05); 
+  --accent-primary: #3B82F6; /* Brighter blue for light mode */
+}
+
 html, body {
   font-family: 'Inter', sans-serif;
-  background-color: #050505;
-  color: rgba(255, 255, 255, 0.9);
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;

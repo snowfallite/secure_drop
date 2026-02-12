@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GlassCard, Button, Input } from './LiquidUI';
-import { ShieldCheck, User as UserIcon, Lock, ArrowRight, QrCode, UserPlus, LogIn, Key, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, User as UserIcon, Lock, ArrowRight, QrCode, UserPlus, LogIn, Key, AlertTriangle, Copy, Check } from 'lucide-react';
 // Adding a stable wrapper for inputs might help, but autoComplete is key against password managers forcing DOM changes
 
 import { ApiService, setAuthToken, clearAuthToken } from '../services/api';
@@ -19,6 +19,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
 
 
@@ -276,13 +277,13 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: '#050505' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-glass-background transition-colors duration-300">
       <GlassCard className="w-full max-w-md z-10 !p-8">
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accent-primary to-accent-secondary flex items-center justify-center shadow-lg shadow-accent-primary/30 mb-4">
             <ShieldCheck className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60">Secure Drop</h1>
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-glass-text to-glass-muted">Secure Drop</h1>
           <p className="text-glass-muted mt-2 text-center text-sm">E2E Encrypted Messenger</p>
         </div>
 
@@ -290,8 +291,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
         {step === 'CREDENTIALS' && (
           <>
             <div className="flex bg-white/5 rounded-xl p-1 mb-6">
-              <button className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${mode === 'LOGIN' ? 'bg-accent-primary/60 text-white shadow-lg' : 'text-glass-muted hover:text-white'}`} onClick={() => setMode('LOGIN')}>Войти</button>
-              <button className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${mode === 'REGISTER' ? 'bg-accent-primary/60 text-white shadow-lg' : 'text-glass-muted hover:text-white'}`} onClick={() => setMode('REGISTER')}>Регистрация</button>
+              <button className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${mode === 'LOGIN' ? 'bg-accent-primary text-white shadow-lg' : 'text-glass-muted hover:text-glass-text hover:bg-white/5'}`} onClick={() => setMode('LOGIN')}>Войти</button>
+              <button className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${mode === 'REGISTER' ? 'bg-accent-primary text-white shadow-lg' : 'text-glass-muted hover:text-glass-text hover:bg-white/5'}`} onClick={() => setMode('REGISTER')}>Регистрация</button>
             </div>
             <form onSubmit={handleCredentialsSubmit} className="space-y-6" autoComplete="off">
               <Input label="Имя пользователя" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} icon={<UserIcon className="w-4 h-4" />} autoFocus autoComplete="off" name="username_nope" />
@@ -331,12 +332,35 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
           <div className="space-y-6">
             <div className="text-center">
               <QrCode className="w-8 h-8 text-white mx-auto mb-3" />
-              <p className="text-sm font-bold">Настройка входа по коду</p>
+              <p className="text-sm font-bold text-glass-text">Настройка входа по коду</p>
               <p className="text-glass-muted text-xs mt-1">Отсканируйте QR в Google Authenticator</p>
             </div>
-            <div className="flex justify-center bg-white p-2 rounded-xl"><img src={qrCode} className="w-40 h-40" alt="QR" /></div>
-            <div className="text-center text-xs text-glass-muted select-all cursor-text font-mono break-all px-4">
-              {totpSecret}
+
+            <div className="flex justify-center">
+              <div className="bg-white p-4 rounded-3xl shadow-lg">
+                <img src={qrCode} className="w-48 h-48 block mix-blend-multiply" alt="QR" />
+              </div>
+            </div>
+
+            <div className="bg-glass-surface border border-glass-border rounded-xl p-3 flex items-center gap-3 relative group overflow-hidden">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-glass-muted uppercase font-bold tracking-wider mb-1">Secret Key</p>
+                <p className="text-sm font-mono text-glass-text truncate select-all">{totpSecret}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {copied && <span className="text-[10px] text-accent-success font-medium animate-fade-in">Copied!</span>}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(totpSecret);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="p-2 rounded-lg hover:bg-glass-highlight transition-colors text-glass-muted hover:text-white"
+                  title="Копировать"
+                >
+                  {copied ? <Check className="w-5 h-5 text-accent-success" /> : <Copy className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             <Input label="Код подтверждения" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} icon={<Lock className="w-4 h-4" />} maxLength={6} />
             {error && <p className="text-accent-danger text-sm text-center">{error}</p>}
